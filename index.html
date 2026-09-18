@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUANGKU</title>
+    
+    <link rel="icon" href="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" type="image/png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6',
+                            600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a',
+                        }
+                    },
+                    boxShadow: {
+                        'bento': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                        'bento-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Z-Index Hierarchy per specs */
+        .z-overlay { z-index: 9999; }
+        .z-toast { z-index: 2000; }
+        .z-modal { z-index: 1000; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .skeleton {
+            background: #f1f5f9;
+            background-image: linear-gradient(to right, #f1f5f9 0%, #e2e8f0 20%, #f1f5f9 40%, #f1f5f9 100%);
+            background-repeat: no-repeat;
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite linear forwards;
+        }
+
+        .bento-card {
+            background: #ffffff;
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border: 1px solid #f1f5f9;
+        }
+        .bento-card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased overflow-x-hidden">
+
+    <!-- Smart UI Warning: Belum pasang URL GAS -->
+    <div id="gas-warning" class="fixed top-0 left-0 right-0 bg-red-600 text-white text-xs font-bold text-center py-2 z-overlay hidden">
+        <span class="flex items-center justify-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            URL GOOGLE APPS SCRIPT BELUM DIKONFIGURASI. SILAKAN EDIT VARIABEL GAS_URL DI KODE JS.
+        </span>
+    </div>
+
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-overlay hidden flex-col items-center justify-center">
+        <svg class="animate-spin h-12 w-12 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-white font-medium text-lg">Memproses data...</span>
+    </div>
+
+    <div id="toast-container" class="fixed top-12 right-4 z-toast flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="global-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-modal hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-300 overflow-hidden flex flex-col" id="modal-content">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800" id="modal-title">Judul</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[60vh]" id="modal-body"></div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2" id="modal-footer"></div>
+        </div>
+    </div>
+
+    <div id="view-login" class="min-h-screen flex items-center justify-center p-4 bg-brand-50 relative overflow-hidden">
+        <div class="absolute -top-20 -left-20 w-72 h-72 bg-brand-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+        <div class="absolute -bottom-20 -right-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+        
+        <div class="bento-card w-full max-w-md p-8 relative z-10 bg-white/80 backdrop-blur-md">
+            <div class="text-center mb-8">
+                <div class="mx-auto w-24 h-24 mb-4 flex items-center justify-center">
+                    <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo SMPN 1 Bondowoso" class="w-full h-full object-contain drop-shadow-sm">
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">RUANGKU</h1>
+                <p class="text-sm text-slate-500 mt-1">Sistem Peminjaman Ruangan</p>
+            </div>
+            
+            <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Username / NIP</label>
+                    <input type="text" id="login-user" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50 focus:bg-white" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50 focus:bg-white" required>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 rounded-xl transition-colors shadow-lg flex justify-center items-center gap-2">
+                    Masuk Sistem
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="view-app" class="hidden flex h-screen bg-slate-50">
+        
+        <!-- Sidebar Desktop -->
+        <aside class="hidden md:flex flex-col w-72 bg-white border-r border-slate-100 shadow-bento z-10 h-full relative">
+            <div class="p-6 flex items-center gap-3 border-b border-slate-100">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <h2 class="font-bold text-slate-800 leading-tight">RUANGKU</h2>
+                    <p class="text-[10px] text-slate-500">Ruang Untuk Akses Navigasi Guru, Kelas, dan Unit Laboratorium</p>
+                </div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2" id="desktop-nav"></nav>
+            
+            <div class="p-4 border-t border-slate-100">
+                <div class="bg-slate-50 rounded-xl p-4 mb-4 flex items-center gap-3 border border-slate-100">
+                    <div class="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center text-brand-700 font-bold" id="user-initial">U</div>
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-sm font-bold text-slate-800 truncate" id="user-name-display">User</p>
+                        <p class="text-xs text-slate-500 capitalize" id="user-role-display">Role</p>
+                    </div>
+                </div>
+                <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    Keluar Sistem
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative pb-16 md:pb-0">
+            <!-- Header Mobile -->
+            <header class="md:hidden bg-white px-4 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 flex items-center justify-center shrink-0">
+                        <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo" class="w-full h-full object-contain">
+                    </div>
+                    <h1 class="font-bold text-slate-800">RUANGKU</h1>
+                </div>
+                <button onclick="handleLogout()" class="text-red-500 p-2 rounded-lg bg-red-50">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                </button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-8" id="page-container">
+                
+                <div id="page-dashboard" class="page-section hidden space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
+                        <p class="text-slate-500 text-sm">Ringkasan aktivitas peminjaman ruangan.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="dashboard-stats">
+                        <!-- Stats dirender via JS -->
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bento-card p-6 lg:col-span-2">
+                            <h3 class="font-bold text-slate-800 mb-4">Grafik Peminjaman Bulanan</h3>
+                            <div class="relative h-64 w-full">
+                                <canvas id="recapChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bento-card p-6 flex flex-col">
+                            <h3 class="font-bold text-slate-800 mb-4">Aktivitas Terkini</h3>
+                            <div class="flex-1 overflow-y-auto space-y-4 pr-2" id="recent-activities">
+                                <!-- Aktivitas dirender via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-scheduler" class="page-section hidden space-y-6 h-full flex-col">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Jadwal Penggunaan</h2>
+                        <p class="text-slate-500 text-sm">Pantau okupansi ruangan secara real-time.</p>
+                    </div>
+                    
+                    <div class="bento-card flex-1 flex flex-col p-4 md:p-6 overflow-hidden min-h-[500px]">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 mb-6">
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="scheduler-date" class="px-4 py-2 border border-slate-200 rounded-xl bg-slate-50" onchange="renderScheduler()">
+                                <button onclick="changeSchedulerDate(0)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-medium">Hari Ini</button>
+                            </div>
+                            <button onclick="refreshData()" class="px-4 py-2 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-xl font-medium flex items-center gap-2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Muat Ulang
+                            </button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-auto border border-slate-200 rounded-xl relative" id="scheduler-grid-container"></div>
+                    </div>
+                </div>
+
+                <div id="page-manage" class="page-section hidden space-y-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">Kelola Peminjaman</h2>
+                            <p class="text-slate-500 text-sm">Verifikasi dan kelola pengajuan ruangan.</p>
+                        </div>
+                        <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg flex items-center gap-2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                            Export Excel
+                        </button>
+                    </div>
+
+                    <div class="bento-card p-4 md:p-6">
+                        <div class="flex flex-col md:flex-row gap-4 mb-6">
+                            <div class="flex-1 relative">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                                <input type="text" id="filter-search" oninput="debounceFilter()" placeholder="Cari peminjam / ruangan..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <select id="filter-status" onchange="resetPaginationAndRender()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-[150px]">
+                                <option value="all">Semua Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Disetujui">Disetujui</option>
+                                <option value="Ditolak">Ditolak</option>
+                            </select>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 text-sm border-y border-slate-200">
+                                        <th class="py-3 px-4 font-medium whitespace-nowrap">ID Pengajuan</th>
+                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Peminjam</th>
+                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Ruangan</th>
+                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Waktu</th>
+                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                                        <th class="py-3 px-4 font-medium text-right whitespace-nowrap">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="booking-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                            </table>
+                            <div id="booking-empty" class="hidden py-12 text-center text-slate-500">
+                                <p>Tidak ada data ditemukan.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Kontrol Paginasi -->
+                        <div class="mt-4 flex justify-between items-center border-t border-slate-100 pt-4">
+                            <span class="text-sm text-slate-500" id="pagination-info">Halaman 1</span>
+                            <div class="flex gap-2">
+                                <button onclick="changePage(-1)" id="btn-prev" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Sebelumnya</button>
+                                <button onclick="changePage(1)" id="btn-next" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Selanjutnya</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-request" class="page-section hidden space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Ajukan Peminjaman</h2>
+                        <p class="text-slate-500 text-sm">Isi formulir untuk meminjam ruangan secara real-time.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bento-card p-6">
+                            <form id="request-form" onsubmit="handleRequestSubmit(event)" class="space-y-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ruangan <span class="text-red-500">*</span></label>
+                                    <select id="req-room" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"></select>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Mulai <span class="text-red-500">*</span></label>
+                                        <input type="date" id="req-date-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Jam Mulai <span class="text-red-500">*</span></label>
+                                        <input type="time" id="req-time-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Selesai <span class="text-red-500">*</span></label>
+                                        <input type="date" id="req-date-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Jam Selesai <span class="text-red-500">*</span></label>
+                                        <input type="time" id="req-time-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Tujuan Penggunaan <span class="text-red-500">*</span></label>
+                                    <textarea id="req-purpose" required rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white" placeholder="Contoh: Kegiatan ekskul..."></textarea>
+                                </div>
+                                <div class="pt-2 flex justify-end">
+                                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-colors">
+                                        Kirim Pengajuan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="bento-card p-6 bg-brand-50 border-brand-100">
+                            <h3 class="font-bold text-brand-800 mb-2">Informasi</h3>
+                            <ul class="text-sm text-brand-700 space-y-2 list-disc pl-4">
+                                <li>Pastikan ruangan belum dipesan pada jadwal yang Anda pilih. Sistem akan memeriksa tabrakan data (Collision Detection).</li>
+                                <li>Pengajuan membutuhkan persetujuan.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="mt-8 py-6 text-center text-xs text-slate-400 border-t border-slate-100">
+                    &copy; ariefcaturk ; &reg; UPTD SPF SMP Negeri 1 Bondowoso
+                </footer>
+            </div>
+        </main>
+
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-20 flex justify-around items-center p-2 pb-safe" id="mobile-nav"></nav>
+    </div>
+
+    <script>
+        // ======= KONFIGURASI PRODUCTION =======
+        // GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0Ph_0-pNFgQSmFujdgIOEh3OkVmEy7LIohDkrF_MM-sMfLQ1O_WwvTsbaEZ1GTZeU/exec'; 
+        // ======================================
+
+        // Variabel Status Awalan (Empty Initial State)
+        let currentUser = null;
+        let globalRooms = [];
+        let globalBookings = [];
+        let chartInstance = null;
+        
+        // Paginasi Klien
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let filteredCache = [];
+
+        window.onload = () => {
+            if (GAS_URL === 'ISI_URL_WEBAPP_GOOGLE_DISINI' || GAS_URL.trim() === '') {
+                document.getElementById('gas-warning').classList.remove('hidden');
+            }
+            
+            // Periksa token login dari session (Auth Guard)
+            const savedUser = sessionStorage.getItem('ruangku_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                initApp();
+            }
+            
+            // Set tanggal hari ini di scheduler
+            document.getElementById('scheduler-date').value = new Date().toISOString().split('T')[0];
+        };
+
+        let isFetching = false;
+        async function fetchAPI(action, payload = {}, retryCount = 0) {
+            if (GAS_URL === 'ISI_URL_WEBAPP_GOOGLE_DISINI') {
+                showToast('Backend belum diatur.', 'error');
+                return { status: 'error', message: 'GAS URL INVALID' };
+            }
+
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    redirect: 'follow', // Penting untuk bypass CORS Apps Script Redirect
+                    body: JSON.stringify({ action, payload })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'error') throw new Error(result.message);
+                return result;
+                
+            } catch (err) {
+                if (retryCount < 2) {
+                    return await fetchAPI(action, payload, retryCount + 1); // Silent Background Retry
+                } else {
+                    showToast(err.message || 'Gagal menghubungi server.', 'error');
+                    return { status: 'error', message: err.message };
+                }
+            }
+        }
+
+        function showLoader(show=true) {
+            const l = document.getElementById('loading-overlay');
+            if(show) { l.classList.remove('hidden'); l.classList.add('flex'); }
+            else { l.classList.add('hidden'); l.classList.remove('flex'); }
+        }
+
+        let toastTimer;
+        function showToast(msg, type='success') {
+            clearTimeout(toastTimer);
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800';
+            
+            toast.className = `px-4 py-3 rounded-xl border shadow-lg transform transition-all translate-x-full opacity-0 flex items-center gap-2 ${bg}`;
+            toast.innerHTML = `<div class="font-medium text-sm flex-1">${msg}</div>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+            
+            toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function openModal(title, contentHTML, footerHTML) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = contentHTML;
+            document.getElementById('modal-footer').innerHTML = footerHTML;
+            
+            const modal = document.getElementById('global-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal-content').classList.remove('scale-95', 'opacity-0'), 10);
+        }
+
+        function closeModal() {
+            document.getElementById('modal-content').classList.add('scale-95', 'opacity-0');
+            setTimeout(() => document.getElementById('global-modal').classList.add('hidden'), 300);
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            
+            showLoader(true);
+            const res = await fetchAPI('login', { nip: u, pass: p });
+            showLoader(false);
+
+            if (res.status === 'success') {
+                currentUser = res.data;
+                sessionStorage.setItem('ruangku_user', JSON.stringify(currentUser));
+                showToast(`Selamat datang, ${currentUser.nama}`, 'success');
+                initApp();
+            } else {
+                showToast(res.message, 'error');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            sessionStorage.removeItem('ruangku_user');
+            globalBookings = [];
+            document.getElementById('view-app').classList.add('hidden');
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('login-form').reset();
+            if(chartInstance) chartInstance.destroy();
+        }
+
+        const NAV_MENUS = [
+            { id: 'dashboard', label: 'Dashboard', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>', roles: ['admin','kepalalab','laboran','kurikulum','guru'] },
+            { id: 'scheduler', label: 'Jadwal', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', roles: ['admin','kepalalab','laboran','kurikulum','guru'] },
+            { id: 'request', label: 'Ajukan', icon: '<path d="M12 5v14"/><path d="M5 12h14"/>', roles: ['guru', 'admin'] },
+            { id: 'manage', label: 'Kelola', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>', roles: ['admin','kepalalab','laboran','kurikulum'] }
+        ];
+
+        function initApp() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-app').classList.remove('hidden');
+            
+            document.getElementById('user-name-display').textContent = currentUser.nama;
+            document.getElementById('user-role-display').textContent = currentUser.role;
+            document.getElementById('user-initial').textContent = currentUser.nama.charAt(0);
+            
+            renderNavigation();
+            refreshData(); // Panggil server
+        }
+
+        function renderNavigation() {
+            const deskNav = document.getElementById('desktop-nav');
+            const mobNav = document.getElementById('mobile-nav');
+            deskNav.innerHTML = ''; mobNav.innerHTML = '';
+            
+            NAV_MENUS.forEach(menu => {
+                if(menu.roles.includes(currentUser.role)) {
+                    deskNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-desk-${menu.id}" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors font-medium text-sm text-left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${menu.icon}</svg>${menu.label}</button>`;
+                    mobNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-mob-${menu.id}" class="nav-item flex flex-col items-center p-2 text-slate-400 hover:text-brand-600 transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1">${menu.icon}</svg><span class="text-[10px] font-medium">${menu.label}</span></button>`;
+                }
+            });
+        }
+
+        function navTo(pageId) {
+            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-brand-50', 'text-brand-600');
+                if(el.id.includes('desk')) el.classList.add('text-slate-600');
+            });
+            const d = document.getElementById(`nav-desk-${pageId}`);
+            const m = document.getElementById(`nav-mob-${pageId}`);
+            if(d) { d.classList.remove('text-slate-600'); d.classList.add('bg-brand-50', 'text-brand-600'); }
+            if(m) { m.classList.remove('text-slate-400'); m.classList.add('text-brand-600'); }
+
+            if(pageId === 'dashboard') renderDashboard();
+            if(pageId === 'manage') resetPaginationAndRender();
+            if(pageId === 'scheduler') renderScheduler();
+        }
+
+        async function refreshData() {
+            showLoader(true);
+            const res = await fetchAPI('getData');
+            showLoader(false);
+            
+            if(res.status === 'success') {
+                globalRooms = res.data.rooms || [];
+                globalBookings = res.data.bookings || [];
+                
+                const sel = document.getElementById('req-room');
+                sel.innerHTML = '<option value="">-- Pilih Ruangan --</option>' + globalRooms.map(r => `<option value="${r}">${r}</option>`).join('');
+                
+                navTo('dashboard');
+            }
+        }
+
+        function renderDashboard() {
+            let total = globalBookings.length;
+            let pending = globalBookings.filter(x => x.status === 'Pending').length;
+            let approved = globalBookings.filter(x => x.status === 'Disetujui').length;
+            let myBookings = globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip).length;
+
+            let statsHtml = currentUser.role === 'guru' ? 
+                `<div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-brand-600">${myBookings}</div><div class="text-xs text-slate-500 uppercase font-semibold">Total Pengajuan Saya</div></div>
+                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-amber-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && x.status==='Pending').length}</div><div class="text-xs text-slate-500 uppercase font-semibold">Menunggu</div></div>
+                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-emerald-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && x.status==='Disetujui').length}</div><div class="text-xs text-slate-500 uppercase font-semibold">Disetujui</div></div>` : 
+                `<div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-brand-600">${total}</div><div class="text-xs text-slate-500 uppercase font-semibold">Total Pengajuan</div></div>
+                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-amber-500">${pending}</div><div class="text-xs text-slate-500 uppercase font-semibold">Menunggu Review</div></div>
+                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-emerald-500">${approved}</div><div class="text-xs text-slate-500 uppercase font-semibold">Telah Disetujui</div></div>
+                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-red-500">${total - pending - approved}</div><div class="text-xs text-slate-500 uppercase font-semibold">Ditolak</div></div>`;
+            document.getElementById('dashboard-stats').innerHTML = statsHtml;
+
+            const ctx = document.getElementById('recapChart');
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: globalRooms,
+                    datasets: [{ label: 'Total Peminjaman (Disetujui)', data: globalRooms.map(r => globalBookings.filter(b => b.Nama_Ruangan === r && b.status === 'Disetujui').length), backgroundColor: '#3b82f6', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
+            });
+
+            const acts = [...globalBookings].reverse().slice(0, 5);
+            document.getElementById('recent-activities').innerHTML = acts.length ? acts.map(a => `
+                <div class="flex items-start gap-3 pb-3 border-b border-slate-100">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    <div><p class="text-sm text-slate-800"><span class="font-semibold">${a.Nama_Peminjam}</span> meminjam <span class="font-semibold">${a.Nama_Ruangan}</span></p>
+                    <p class="text-[10px] text-slate-500">${a.Tanggal_Mulai} &bull; <span class="font-medium">${a.status}</span></p></div>
+                </div>`).join('') : '<p class="text-sm text-slate-400">Kosong</p>';
+        }
+
+        function changeSchedulerDate(offset) {
+            const input = document.getElementById('scheduler-date');
+            if(offset === 0) { input.value = new Date().toISOString().split('T')[0]; } 
+            else { const d = new Date(input.value); d.setDate(d.getDate() + offset); input.value = d.toISOString().split('T')[0]; }
+            renderScheduler();
+        }
+
+        function renderScheduler() {
+            const dateStr = document.getElementById('scheduler-date').value;
+            const container = document.getElementById('scheduler-grid-container');
+            const dayBookings = globalBookings.filter(b => (b.Tanggal_Mulai <= dateStr && b.Tanggal_Selesai >= dateStr) && b.status !== 'Ditolak');
+            const hours = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+            
+            let html = `<div class="min-w-[800px]"><div class="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10"><div class="w-40 p-3 font-semibold text-sm border-r border-slate-200">Ruangan</div>${hours.map(h => `<div class="flex-1 p-3 text-center text-xs font-semibold text-slate-500 border-r border-slate-200">${h}</div>`).join('')}</div>`;
+
+            globalRooms.forEach(room => {
+                html += `<div class="flex border-b border-slate-100 group relative"><div class="w-40 p-3 text-sm font-medium border-r border-slate-200 shrink-0">${room}</div><div class="flex-1 flex relative h-14">${hours.map(() => `<div class="flex-1 border-r border-slate-100/50"></div>`).join('')}`;
+                
+                dayBookings.filter(b => b.Nama_Ruangan === room).forEach(b => {
+                    const sHour = parseInt(b.Waktu_Mulai.split(':')[0]);
+                    const eHour = parseInt(b.Waktu_Selesai.split(':')[0]);
+                    if(sHour >= 7 && sHour <= 16) {
+                        const startIdx = Math.max(0, sHour - 7);
+                        const span = Math.min(hours.length - startIdx, (eHour - sHour) || 1);
+                        const left = (startIdx / hours.length) * 100, width = (span / hours.length) * 100;
+                        const bg = b.status === 'Disetujui' ? 'bg-brand-100 border-brand-300 text-brand-800' : 'bg-amber-100 border-amber-300 text-amber-800';
+                        html += `<div class="absolute top-1 bottom-1 rounded-md border text-[10px] overflow-hidden p-1 shadow-sm opacity-90 hover:opacity-100 cursor-pointer ${bg}" style="left:${left}%; width:calc(${width}% - 2px);" onclick="showBookingDetails('${b.ID_Peminjaman}')"><div class="font-bold truncate">${b.Nama_Peminjam}</div></div>`;
+                    }
+                });
+                html += `</div></div>`;
+            });
+            container.innerHTML = html + `</div>`;
+        }
+
+        let filterTimeout;
+        function debounceFilter() {
+            clearTimeout(filterTimeout);
+            document.getElementById('booking-table-body').innerHTML = `<tr><td colspan="6"><div class="h-10 skeleton my-2 rounded"></div></td></tr>`;
+            filterTimeout = setTimeout(() => { resetPaginationAndRender(); }, 300);
+        }
+
+        function resetPaginationAndRender() { currentPage = 1; renderBookingTable(); }
+
+        function renderBookingTable() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const statusF = document.getElementById('filter-status').value;
+            
+            filteredCache = globalBookings.filter(b => {
+                const matchSearch = b.Nama_Peminjam.toLowerCase().includes(search) || b.Nama_Ruangan.toLowerCase().includes(search) || b.ID_Peminjaman.toLowerCase().includes(search);
+                const matchStatus = statusF === 'all' || b.status === statusF;
+                return matchSearch && matchStatus;
+            }).reverse(); // Sort descending by ID inherently
+
+            // Manual Pagination Logic
+            const totalPages = Math.ceil(filteredCache.length / itemsPerPage) || 1;
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = currentPage === totalPages;
+            document.getElementById('pagination-info').textContent = `Hal ${currentPage} dari ${totalPages} (${filteredCache.length} Data)`;
+
+            const start = (currentPage - 1) * itemsPerPage;
+            const paginatedData = filteredCache.slice(start, start + itemsPerPage);
+
+            const tbody = document.getElementById('booking-table-body');
+            const empty = document.getElementById('booking-empty');
+
+            if(paginatedData.length === 0) {
+                tbody.innerHTML = ''; empty.classList.remove('hidden'); return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = paginatedData.map(b => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 font-medium text-brand-600">${b.ID_Peminjaman}</td>
+                    <td class="py-3 px-4 font-medium text-slate-800">${b.Nama_Peminjam}</td>
+                    <td class="py-3 px-4">${b.Nama_Ruangan}</td>
+                    <td class="py-3 px-4"><div class="text-slate-800">${b.Tanggal_Mulai}</div><div class="text-xs text-slate-500">${b.Waktu_Mulai} - ${b.Waktu_Selesai}</div></td>
+                    <td class="py-3 px-4"><span class="px-2.5 py-1 text-xs rounded-full font-medium ${b.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${b.status}</span></td>
+                    <td class="py-3 px-4 text-right"><button onclick="showBookingDetails('${b.ID_Peminjaman}')" class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg">Detail</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function changePage(dir) {
+            currentPage += dir;
+            renderBookingTable();
+        }
+
+        async function handleRequestSubmit(e) {
+            e.preventDefault();
+            const data = {
+                nip: currentUser.nip,
+                nama: currentUser.nama,
+                ruangan: document.getElementById('req-room').value,
+                tglMulai: document.getElementById('req-date-start').value,
+                wktMulai: document.getElementById('req-time-start').value,
+                tglSelesai: document.getElementById('req-date-end').value,
+                wktSelesai: document.getElementById('req-time-end').value,
+                tujuan: document.getElementById('req-purpose').value
+            };
+
+            showLoader(true);
+            const res = await fetchAPI('requestBooking', data);
+            showLoader(false);
+
+            if(res.status === 'success') {
+                showToast('Pengajuan berhasil dikirim!', 'success');
+                document.getElementById('request-form').reset();
+                refreshData(); // Tarik data baru
+            } else {
+                showToast(res.message, 'error'); // Termasuk notifikasi tabrakan jadwal
+            }
+        }
+
+        function showBookingDetails(id) {
+            const b = globalBookings.find(x => x.ID_Peminjaman === id);
+            if(!b) return;
+
+            let html = `<div class="space-y-4 text-sm">
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">ID</div><div class="col-span-2 font-medium">${b.ID_Peminjaman}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Peminjam</div><div class="col-span-2 font-medium">${b.Nama_Peminjam}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Ruangan</div><div class="col-span-2 font-medium">${b.Nama_Ruangan}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Jadwal</div><div class="col-span-2 font-medium">${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Tujuan</div><div class="col-span-2 font-medium">${b.Tujuan_Penggunaan}</div></div>
+                <div class="grid grid-cols-3 gap-2"><div class="text-slate-500">Status</div><div class="col-span-2 font-medium">${b.status}</div></div>
+            </div>`;
+
+            let foot = `<button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">Tutup</button>`;
+            
+            if(currentUser.role !== 'guru' && b.status === 'Pending') {
+                foot = `<button onclick="updateStatus('${b.ID_Peminjaman}', 'Ditolak')" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium">Tolak</button>
+                        <button onclick="updateStatus('${b.ID_Peminjaman}', 'Disetujui')" class="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-medium">Setujui</button>` + foot;
+            }
+
+            if(currentUser.role === 'guru' && b.status === 'Disetujui') {
+                foot = `<button onclick="printPDF('${b.ID_Peminjaman}')" class="px-4 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-xl font-medium">Cetak PDF</button>` + foot;
+            }
+
+            openModal(`Detail Pengajuan`, html, foot);
+        }
+
+        async function updateStatus(id, newStatus) {
+            closeModal(); showLoader(true);
+            const res = await fetchAPI('updateStatus', { id, status: newStatus });
+            showLoader(false);
+            if(res.status === 'success') { showToast('Status diperbarui.', 'success'); refreshData(); }
+            else { showToast(res.message, 'error'); }
+        }
+
+        function exportExcel() {
+            try {
+                const ws = XLSX.utils.json_to_sheet(filteredCache);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+                XLSX.writeFile(wb, `Rekap_Ruangku_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showToast('Excel diunduh.', 'success');
+            } catch(e) { showToast('Gagal ekspor.', 'error'); }
+        }
+
+        async function printPDF(id) {
+            const b = globalBookings.find(x => x.ID_Peminjaman === id);
+            if(!b) return;
+            showLoader(true);
+            
+            try {
+                const { jsPDF } = window.jspdf; const doc = new jsPDF();
+                const kopImg = new Image(); kopImg.crossOrigin = "Anonymous";
+                kopImg.src = 'https://lh3.googleusercontent.com/d/1DijxakM6Be7mexW3WZajTYbMxfkNnRo2'; 
+                
+                await new Promise((res, rej) => { kopImg.onload = res; kopImg.onerror = rej; setTimeout(rej, 3000); })
+                .then(() => doc.addImage(kopImg, 'JPEG', 15, 10, 180, 30))
+                .catch(() => { doc.text("UPTD SPF SMPN 1 BONDOWOSO", 105, 20, {align: 'center'}); });
+
+                doc.setFontSize(14); doc.text("SURAT IZIN PEMINJAMAN RUANGAN", 105, 50, {align: 'center'});
+                
+                doc.autoTable({
+                    startY: 70, theme: 'plain',
+                    body: [ ['ID', ':', b.ID_Peminjaman], ['Peminjam', ':', b.Nama_Peminjam], ['Ruangan', ':', b.Nama_Ruangan], ['Jadwal', ':', `${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})`], ['Status', ':', b.status] ]
+                });
+                doc.text("Disetujui dan sah digunakan.", 15, doc.lastAutoTable.finalY + 15);
+                doc.save(`Izin_${b.ID_Peminjaman}.pdf`);
+                showToast('PDF Diunduh.', 'success');
+            } catch (err) { showToast('Gagal buat PDF.', 'error'); }
+            finally { showLoader(false); }
+        }
+    </script>
+</body>
+</html>
