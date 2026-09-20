@@ -147,7 +147,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-800 leading-tight">RUANGKU</h2>
-                    <p class="text-[10px] text-slate-500">Ruang Untuk Akses Navigasi Guru, Kelas, dan Unit Laboratorium</p>
+                    <p class="text-[10px] text-slate-500">Ruang Untuk Akses Navigasi Guru, Kelas, dan Unit</p>
                 </div>
             </div>
             
@@ -187,7 +187,7 @@
                 <div id="page-dashboard" class="page-section hidden space-y-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
-                        <p class="text-slate-500 text-sm">Ringkasan aktivitas peminjaman ruangan.</p>
+                        <p class="text-slate-500 text-sm">Ringkasan Aktivitas Peminjaman Ruangan.</p>
                     </div>
                     
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="dashboard-stats">
@@ -208,12 +208,38 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- REKAPITULASI SECTION -->
+                    <div class="bento-card p-6 mt-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                            <h3 class="font-bold text-slate-800">Rekapitulasi Penggunaan Ruangan</h3>
+                            <select id="recap-filter" onchange="renderRecapTable()" class="px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm">
+                                <option value="daily">Harian (Hari Ini)</option>
+                                <option value="weekly">Mingguan (Minggu Ini)</option>
+                                <option value="monthly">Bulanan (Bulan Ini)</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 text-sm border-y border-slate-200">
+                                        <th class="py-3 px-4 font-medium">Peminjam</th>
+                                        <th class="py-3 px-4 font-medium">Mata Pelajaran</th>
+                                        <th class="py-3 px-4 font-medium">Ruangan</th>
+                                        <th class="py-3 px-4 font-medium">Waktu</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recap-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                            </table>
+                            <div id="recap-empty" class="hidden py-8 text-center text-slate-500 text-sm">Tidak ada data untuk periode ini.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="page-scheduler" class="page-section hidden space-y-6 h-full flex-col">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Jadwal Penggunaan</h2>
-                        <p class="text-slate-500 text-sm">Pantau ketersediaan ruangan secara real-time.</p>
+                        <p class="text-slate-500 text-sm">Pantau peminjaman ruangan secara real-time.</p>
                     </div>
                     
                     <div class="bento-card flex-1 flex flex-col p-4 md:p-6 overflow-hidden min-h-[500px]">
@@ -235,7 +261,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div>
                             <h2 class="text-2xl font-bold text-slate-800">Kelola Peminjaman</h2>
-                            <p class="text-slate-500 text-sm">Verifikasi dan kelola pengajuan ruangan.</p>
+                            <p class="text-slate-500 text-sm">Verifikasi dan Kelola Pengajuan Ruangan.</p>
                         </div>
                         <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg flex items-center gap-2">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
@@ -290,7 +316,7 @@
                 <div id="page-request" class="page-section hidden space-y-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Ajukan Peminjaman</h2>
-                        <p class="text-slate-500 text-sm">Isi formulir untuk meminjam ruangan secara real-time.</p>
+                        <p class="text-slate-500 text-sm">Isi formulir untuk peminjaman ruangan secara real-time.</p>
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -316,6 +342,37 @@
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700 mb-1">Jam Selesai <span class="text-red-500">*</span></label>
                                         <input type="time" id="req-time-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran <span class="text-red-500">*</span></label>
+                                        <select id="req-mapel" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                            <option value="">-- Pilih Mata Pelajaran --</option>
+                                            <option value="Pendidikan Agama Islam dan Budi Pekerti">Pendidikan Agama Islam dan Budi Pekerti</option>
+                                            <option value="Pendidikan Kewarganegaraan">Pendidikan Kewarganegaraan</option>
+                                            <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                                            <option value="Bahasa Inggris">Bahasa Inggris</option>
+                                            <option value="Matematika">Matematika</option>
+                                            <option value="Ilmu Pengetahuan Alam">Ilmu Pengetahuan Alam</option>
+                                            <option value="Ilmu Pengetahuan Sosial">Ilmu Pengetahuan Sosial</option>
+                                            <option value="Pendidikan Jasmani, Olahraga, dan Kesehatan">Pendidikan Jasmani, Olahraga, dan Kesehatan</option>
+                                            <option value="Informatika">Informatika</option>
+                                            <option value="Seni Budaya dan Keterampilan">Seni Budaya dan Keterampilan</option>
+                                            <option value="Bahasa Daerah">Bahasa Daerah</option>
+                                            <option value="Baca Tulis Alquran">Baca Tulis Alquran</option>
+                                            <option value="Bimbingan Konseling">Bimbingan Konseling</option>
+                                            <option value="Koding dan Kecerdasan Artifisial">Koding dan Kecerdasan Artifisial</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Kelas <span class="text-red-500">*</span></label>
+                                        <select id="req-kelas" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                            <option value="">-- Pilih Kelas --</option>
+                                            <option value="7A">7A</option><option value="7B">7B</option><option value="7C">7C</option><option value="7D">7D</option><option value="7E">7E</option><option value="7F">7F</option><option value="7G">7G</option><option value="7H">7H</option>
+                                            <option value="8A">8A</option><option value="8B">8B</option><option value="8C">8C</option><option value="8D">8D</option><option value="8E">8E</option><option value="8F">8F</option><option value="8G">8G</option><option value="8H">8H</option>
+                                            <option value="9A">9A</option><option value="9B">9B</option><option value="9C">9C</option><option value="9D">9D</option><option value="9E">9E</option><option value="9F">9F</option><option value="9G">9G</option><option value="9H">9H</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div>
@@ -364,6 +421,24 @@
         let currentPage = 1;
         let itemsPerPage = 10;
         let filteredCache = [];
+
+        function parseBooking(b) {
+            let mapel = '-';
+            let kelas = '-';
+            let tujuan = b.Tujuan_Penggunaan || '';
+            if (tujuan.includes('|||')) {
+                const parts = tujuan.split('|||');
+                if (parts.length === 3) {
+                    mapel = parts[0];
+                    kelas = parts[1];
+                    tujuan = parts[2];
+                } else if (parts.length === 2) {
+                    mapel = parts[0];
+                    tujuan = parts[1];
+                }
+            }
+            return { ...b, mapel, kelas, tujuanParsed: tujuan };
+        }
 
         window.onload = () => {
             if (GAS_URL === 'ISI_URL_WEBAPP_GOOGLE_DISINI' || GAS_URL.trim() === '') {
@@ -573,12 +648,64 @@
             });
 
             const acts = [...globalBookings].reverse().slice(0, 5);
-            document.getElementById('recent-activities').innerHTML = acts.length ? acts.map(a => `
+            document.getElementById('recent-activities').innerHTML = acts.length ? acts.map(a => {
+                const pb = parseBooking(a);
+                return `
                 <div class="flex items-start gap-3 pb-3 border-b border-slate-100">
                     <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-                    <div><p class="text-sm text-slate-800"><span class="font-semibold">${a.Nama_Peminjam}</span> meminjam <span class="font-semibold">${a.Nama_Ruangan}</span></p>
-                    <p class="text-[10px] text-slate-500">${a.Tanggal_Mulai} &bull; <span class="font-medium">${a.status}</span></p></div>
-                </div>`).join('') : '<p class="text-sm text-slate-400">Kosong</p>';
+                    <div><p class="text-sm text-slate-800"><span class="font-semibold">${pb.Nama_Peminjam}</span> meminjam <span class="font-semibold">${pb.Nama_Ruangan}</span></p>
+                    <p class="text-[10px] text-slate-500">${pb.Tanggal_Mulai} &bull; <span class="font-medium">${pb.status}</span></p></div>
+                </div>`}).join('') : '<p class="text-sm text-slate-400">Kosong</p>';
+                
+            renderRecapTable();
+        }
+
+        function renderRecapTable() {
+            const filter = document.getElementById('recap-filter').value;
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            
+            const getWeekNumber = (d) => {
+                const date = new Date(d);
+                date.setHours(0, 0, 0, 0);
+                date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+                const week1 = new Date(date.getFullYear(), 0, 4);
+                return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+            };
+
+            const currentWeek = getWeekNumber(now);
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+
+            const filtered = globalBookings.filter(b => {
+                if (b.status !== 'Disetujui') return false; 
+                const bDate = new Date(b.Tanggal_Mulai);
+                if (filter === 'daily') return b.Tanggal_Mulai === today;
+                if (filter === 'weekly') return getWeekNumber(bDate) === currentWeek && bDate.getFullYear() === currentYear;
+                if (filter === 'monthly') return bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear;
+                return true;
+            });
+
+            const tbody = document.getElementById('recap-table-body');
+            const empty = document.getElementById('recap-empty');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            tbody.innerHTML = filtered.map(b => {
+                const pb = parseBooking(b);
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 font-medium text-slate-800">${pb.Nama_Peminjam}</td>
+                    <td class="py-3 px-4">${pb.mapel}${pb.kelas !== '-' ? '<br><span class="text-xs text-slate-500">Kelas ' + pb.kelas + '</span>' : ''}</td>
+                    <td class="py-3 px-4">${pb.Nama_Ruangan}</td>
+                    <td class="py-3 px-4 text-slate-600">${pb.Tanggal_Mulai} (${pb.Waktu_Mulai}-${pb.Waktu_Selesai})</td>
+                </tr>
+            `}).join('');
         }
 
         function changeSchedulerDate(offset) {
@@ -670,6 +797,9 @@
 
         async function handleRequestSubmit(e) {
             e.preventDefault();
+            const mapel = document.getElementById('req-mapel').value;
+            const kelas = document.getElementById('req-kelas').value;
+            const tujuanRaw = document.getElementById('req-purpose').value;
             const data = {
                 nip: currentUser.nip,
                 nama: currentUser.nama,
@@ -678,7 +808,7 @@
                 wktMulai: document.getElementById('req-time-start').value,
                 tglSelesai: document.getElementById('req-date-end').value,
                 wktSelesai: document.getElementById('req-time-end').value,
-                tujuan: document.getElementById('req-purpose').value
+                tujuan: mapel + '|||' + kelas + '|||' + tujuanRaw
             };
 
             showLoader(true);
@@ -695,15 +825,18 @@
         }
 
         function showBookingDetails(id) {
-            const b = globalBookings.find(x => x.ID_Peminjaman === id);
-            if(!b) return;
+            const bRaw = globalBookings.find(x => x.ID_Peminjaman === id);
+            if(!bRaw) return;
+            const b = parseBooking(bRaw);
 
             let html = `<div class="space-y-4 text-sm">
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">ID</div><div class="col-span-2 font-medium">${b.ID_Peminjaman}</div></div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Peminjam</div><div class="col-span-2 font-medium">${b.Nama_Peminjam}</div></div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Ruangan</div><div class="col-span-2 font-medium">${b.Nama_Ruangan}</div></div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Jadwal</div><div class="col-span-2 font-medium">${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Tujuan</div><div class="col-span-2 font-medium">${b.Tujuan_Penggunaan}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Mata Pelajaran</div><div class="col-span-2 font-medium">${b.mapel}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Kelas</div><div class="col-span-2 font-medium">${b.kelas}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Tujuan</div><div class="col-span-2 font-medium">${b.tujuanParsed}</div></div>
                 <div class="grid grid-cols-3 gap-2"><div class="text-slate-500">Status</div><div class="col-span-2 font-medium">${b.status}</div></div>
             </div>`;
 
@@ -740,29 +873,55 @@
         }
 
         async function printPDF(id) {
-            const b = globalBookings.find(x => x.ID_Peminjaman === id);
-            if(!b) return;
+            const bRaw = globalBookings.find(x => x.ID_Peminjaman === id);
+            if(!bRaw) return;
+            const b = parseBooking(bRaw);
             showLoader(true);
             
             try {
-                const { jsPDF } = window.jspdf; const doc = new jsPDF();
-                const kopImg = new Image(); kopImg.crossOrigin = "Anonymous";
-                kopImg.src = 'https://lh3.googleusercontent.com/d/1DijxakM6Be7mexW3WZajTYbMxfkNnRo2'; 
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF();
                 
-                await new Promise((res, rej) => { kopImg.onload = res; kopImg.onerror = rej; setTimeout(rej, 3000); })
-                .then(() => doc.addImage(kopImg, 'JPEG', 15, 10, 180, 30))
-                .catch(() => { doc.text("UPTD SPF SMPN 1 BONDOWOSO", 105, 20, {align: 'center'}); });
+                const loadImg = new Promise((resolve) => {
+                    const kopImg = new Image(); 
+                    kopImg.crossOrigin = "Anonymous";
+                    kopImg.onload = () => resolve(kopImg);
+                    kopImg.onerror = () => resolve(null);
+                    setTimeout(() => resolve(null), 3000);
+                    kopImg.src = 'https://lh3.googleusercontent.com/d/1DijxakM6Be7mexW3WZajTYbMxfkNnRo2'; 
+                });
+                
+                const img = await loadImg;
+                if (img) {
+                    doc.addImage(img, 'JPEG', 15, 10, 180, 30);
+                } else {
+                    doc.setFontSize(14);
+                    doc.text("UPTD SPF SMPN 1 BONDOWOSO", 105, 20, {align: 'center'});
+                }
 
-                doc.setFontSize(14); doc.text("SURAT IZIN PEMINJAMAN RUANGAN", 105, 50, {align: 'center'});
+                doc.setFontSize(14); doc.text("SURAT IZIN PEMINJAMAN", 105, 50, {align: 'center'});
                 
                 doc.autoTable({
-                    startY: 70, theme: 'plain',
-                    body: [ ['ID', ':', b.ID_Peminjaman], ['Peminjam', ':', b.Nama_Peminjam], ['Ruangan', ':', b.Nama_Ruangan], ['Jadwal', ':', `${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})`], ['Status', ':', b.status] ]
+                    startY: 65, 
+                    theme: 'plain',
+                    body: [ 
+                        ['ID Peminjaman', ':', b.ID_Peminjaman], 
+                        ['Nama Peminjam', ':', b.Nama_Peminjam], 
+                        ['Nama Ruangan', ':', b.Nama_Ruangan], 
+                        ['Jadwal', ':', `${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})`], 
+                        ['Mata Pelajaran', ':', b.mapel],
+                        ['Kelas', ':', b.kelas],
+                        ['Tujuan / Keterangan', ':', b.tujuanParsed],
+                        ['Status', ':', b.status] 
+                    ]
                 });
                 doc.text("Disetujui dan sah digunakan.", 15, doc.lastAutoTable.finalY + 15);
                 doc.save(`Izin_${b.ID_Peminjaman}.pdf`);
                 showToast('PDF Diunduh.', 'success');
-            } catch (err) { showToast('Gagal buat PDF.', 'error'); }
+            } catch (err) { 
+                console.error(err);
+                showToast('Gagal buat PDF.', 'error'); 
+            }
             finally { showLoader(false); }
         }
     </script>
