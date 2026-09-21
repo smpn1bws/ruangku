@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>R U A N G K U</title>
     
     <link rel="icon" href="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" type="image/png">
@@ -29,6 +29,7 @@
                     boxShadow: {
                         'bento': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
                         'bento-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                        'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                     }
                 }
             }
@@ -37,12 +38,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         
         /* Z-Index Hierarchy per specs */
         .z-overlay { z-index: 9999; }
         .z-toast { z-index: 2000; }
         .z-modal { z-index: 1000; }
+        .z-header { z-index: 50; }
         
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -65,7 +67,7 @@
             background: #ffffff;
             border-radius: 1.25rem;
             box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid #f1f5f9;
         }
         .bento-card:hover {
@@ -76,7 +78,7 @@
 </head>
 <body class="text-slate-800 antialiased overflow-x-hidden">
 
-    <!-- Smart UI Warning: Belum pasang URL GAS -->
+    <!-- Smart UI Warning -->
     <div id="gas-warning" class="fixed top-0 left-0 right-0 bg-red-600 text-white text-xs font-bold text-center py-2 z-overlay hidden">
         <span class="flex items-center justify-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -84,36 +86,38 @@
         </span>
     </div>
 
-    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-overlay hidden flex-col items-center justify-center">
-        <svg class="animate-spin h-12 w-12 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span class="text-white font-medium text-lg">Memproses data...</span>
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-overlay hidden flex-col items-center justify-center">
+        <div class="bg-white p-4 rounded-2xl shadow-2xl flex flex-col items-center">
+            <svg class="animate-spin h-10 w-10 text-brand-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-slate-700 font-medium text-sm">Memproses data...</span>
+        </div>
     </div>
 
-    <div id="toast-container" class="fixed top-12 right-4 z-toast flex flex-col gap-2 pointer-events-none"></div>
+    <div id="toast-container" class="fixed top-12 right-4 md:right-8 z-toast flex flex-col gap-2 pointer-events-none"></div>
 
-    <div id="global-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-modal hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-300 overflow-hidden flex flex-col" id="modal-content">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+    <div id="global-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-modal hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-modal transform transition-all scale-95 opacity-0 duration-300 overflow-hidden flex flex-col" id="modal-content">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                 <h3 class="font-bold text-lg text-slate-800" id="modal-title">Judul</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
             </div>
-            <div class="p-6 overflow-y-auto max-h-[60vh]" id="modal-body"></div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2" id="modal-footer"></div>
+            <div class="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar" id="modal-body"></div>
+            <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-wrap" id="modal-footer"></div>
         </div>
     </div>
 
     <div id="view-login" class="min-h-screen flex items-center justify-center p-4 bg-brand-50 relative overflow-hidden">
-        <div class="absolute -top-20 -left-20 w-72 h-72 bg-brand-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
-        <div class="absolute -bottom-20 -right-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+        <div class="absolute -top-32 -left-32 w-96 h-96 bg-brand-200/50 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
+        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-200/50 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
         
-        <div class="bento-card w-full max-w-md p-8 relative z-10 bg-white/80 backdrop-blur-md">
+        <div class="bento-card w-full max-w-sm p-8 relative z-10 bg-white/90 backdrop-blur-xl">
             <div class="text-center mb-8">
-                <div class="mx-auto w-24 h-24 mb-4 flex items-center justify-center">
+                <div class="mx-auto w-20 h-20 mb-5 flex items-center justify-center">
                     <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo SMPN 1 Bondowoso" class="w-full h-full object-contain drop-shadow-sm">
                 </div>
                 <h1 class="text-2xl font-bold text-slate-800 tracking-tight">RUANGKU</h1>
@@ -122,14 +126,14 @@
             
             <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Username / NIP</label>
-                    <input type="text" id="login-user" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50 focus:bg-white" required>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Username / NIP</label>
+                    <input type="text" id="login-user" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 bg-slate-50 focus:bg-white transition-all text-sm" required>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                    <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50 focus:bg-white" required>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Password</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 bg-slate-50 focus:bg-white transition-all text-sm" required>
                 </div>
-                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 rounded-xl transition-colors shadow-lg flex justify-center items-center gap-2">
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-brand-500/30 flex justify-center items-center gap-2">
                     Masuk Sistem
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                 </button>
@@ -140,44 +144,47 @@
     <div id="view-app" class="hidden flex h-screen bg-slate-50">
         
         <!-- Sidebar Desktop -->
-        <aside class="hidden md:flex flex-col w-72 bg-white border-r border-slate-100 shadow-bento z-10 h-full relative">
+        <aside class="hidden md:flex flex-col w-72 bg-white border-r border-slate-100 shadow-bento z-header h-full relative">
             <div class="p-6 flex items-center gap-3 border-b border-slate-100">
                 <div class="w-10 h-10 flex items-center justify-center shrink-0">
                     <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-800 leading-tight">RUANGKU</h2>
-                    <p class="text-[10px] text-slate-500">Ruang Untuk Akses Navigasi Guru, Kelas, dan Unit</p>
+                    <p class="text-[10px] text-slate-500 font-medium">Ruang Untuk Akses Navigasi Guru, Kelas, dan Unit</p>
                 </div>
             </div>
             
-            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2" id="desktop-nav"></nav>
+            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1.5" id="desktop-nav"></nav>
             
             <div class="p-4 border-t border-slate-100">
-                <div class="bg-slate-50 rounded-xl p-4 mb-4 flex items-center gap-3 border border-slate-100">
-                    <div class="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center text-brand-700 font-bold" id="user-initial">U</div>
+                <div class="bg-slate-50 rounded-2xl p-4 mb-4 flex items-center gap-3 border border-slate-100">
+                    <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold shrink-0" id="user-initial">U</div>
                     <div class="flex-1 overflow-hidden">
                         <p class="text-sm font-bold text-slate-800 truncate" id="user-name-display">User</p>
-                        <p class="text-xs text-slate-500 capitalize" id="user-role-display">Role</p>
+                        <p class="text-xs text-slate-500 capitalize font-medium" id="user-role-display">Role</p>
                     </div>
                 </div>
-                <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium">
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                     Keluar Sistem
                 </button>
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative pb-16 md:pb-0">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative pb-20 md:pb-0">
             <!-- Header Mobile -->
-            <header class="md:hidden bg-white px-4 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-100">
-                <div class="flex items-center gap-2">
+            <header class="md:hidden bg-white/80 backdrop-blur-md px-4 py-3 flex justify-between items-center shadow-sm z-header border-b border-slate-100 sticky top-0">
+                <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 flex items-center justify-center shrink-0">
                         <img src="https://lh3.googleusercontent.com/d/1cGi7worqKlj13JC-ZxifpXkYIspIyiNE" alt="Logo" class="w-full h-full object-contain">
                     </div>
-                    <h1 class="font-bold text-slate-800">RUANGKU</h1>
+                    <div>
+                        <h1 class="font-bold text-slate-800 text-sm leading-tight">RUANGKU</h1>
+                        <p class="text-[9px] text-slate-500 font-medium">SMPN 1 Bondowoso</p>
+                    </div>
                 </div>
-                <button onclick="handleLogout()" class="text-red-500 p-2 rounded-lg bg-red-50">
+                <button onclick="handleLogout()" class="text-red-500 p-2 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                 </button>
             </header>
@@ -187,7 +194,7 @@
                 <div id="page-dashboard" class="page-section hidden space-y-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
-                        <p class="text-slate-500 text-sm">Ringkasan Aktivitas Peminjaman Ruangan.</p>
+                        <p class="text-slate-500 text-sm mt-1">Ringkasan aktivitas peminjaman ruangan.</p>
                     </div>
                     
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="dashboard-stats">
@@ -196,14 +203,14 @@
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="bento-card p-6 lg:col-span-2">
-                            <h3 class="font-bold text-slate-800 mb-4">Grafik Peminjaman</h3>
+                            <h3 class="font-bold text-slate-800 mb-4">Grafik Peminjaman Bulanan</h3>
                             <div class="relative h-64 w-full">
                                 <canvas id="recapChart"></canvas>
                             </div>
                         </div>
                         <div class="bento-card p-6 flex flex-col">
                             <h3 class="font-bold text-slate-800 mb-4">Aktivitas Terkini</h3>
-                            <div class="flex-1 overflow-y-auto space-y-4 pr-2" id="recent-activities">
+                            <div class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar" id="recent-activities">
                                 <!-- Aktivitas dirender via JS -->
                             </div>
                         </div>
@@ -211,27 +218,30 @@
 
                     <!-- REKAPITULASI SECTION -->
                     <div class="bento-card p-6 mt-6">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                             <h3 class="font-bold text-slate-800">Rekapitulasi Penggunaan Ruangan</h3>
-                            <select id="recap-filter" onchange="renderRecapTable()" class="px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm">
+                            <select id="recap-filter" onchange="renderRecapTable()" class="w-full md:w-auto px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:ring-2 focus:ring-brand-500/50 outline-none">
                                 <option value="daily">Harian (Hari Ini)</option>
                                 <option value="weekly">Mingguan (Minggu Ini)</option>
                                 <option value="monthly">Bulanan (Bulan Ini)</option>
                             </select>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto rounded-xl border border-slate-100">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50 text-slate-500 text-sm border-y border-slate-200">
-                                        <th class="py-3 px-4 font-medium">Peminjam</th>
-                                        <th class="py-3 px-4 font-medium">Mata Pelajaran</th>
-                                        <th class="py-3 px-4 font-medium">Ruangan</th>
-                                        <th class="py-3 px-4 font-medium">Waktu</th>
+                                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                        <th class="py-3 px-4 font-semibold border-b border-slate-100">Peminjam</th>
+                                        <th class="py-3 px-4 font-semibold border-b border-slate-100">Mata Pelajaran</th>
+                                        <th class="py-3 px-4 font-semibold border-b border-slate-100">Ruangan</th>
+                                        <th class="py-3 px-4 font-semibold border-b border-slate-100">Waktu</th>
                                     </tr>
                                 </thead>
-                                <tbody id="recap-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                                <tbody id="recap-table-body" class="divide-y divide-slate-100 text-sm bg-white"></tbody>
                             </table>
-                            <div id="recap-empty" class="hidden py-8 text-center text-slate-500 text-sm">Tidak ada data untuk periode ini.</div>
+                            <div id="recap-empty" class="hidden py-10 text-center flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-slate-200 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                                <p class="text-slate-500 text-sm font-medium">Tidak ada data untuk periode ini.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -239,21 +249,21 @@
                 <div id="page-scheduler" class="page-section hidden space-y-6 h-full flex-col">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Jadwal Penggunaan</h2>
-                        <p class="text-slate-500 text-sm">Pantau peminjaman ruangan secara real-time.</p>
+                        <p class="text-slate-500 text-sm mt-1">Pantau peminjaman ruangan.</p>
                     </div>
                     
                     <div class="bento-card flex-1 flex flex-col p-4 md:p-6 overflow-hidden min-h-[500px]">
                         <div class="flex flex-col md:flex-row justify-between gap-4 mb-6">
                             <div class="flex items-center gap-2">
-                                <input type="date" id="scheduler-date" class="px-4 py-2 border border-slate-200 rounded-xl bg-slate-50" onchange="renderScheduler()">
-                                <button onclick="changeSchedulerDate(0)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-medium">Hari Ini</button>
+                                <input type="date" id="scheduler-date" class="px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:ring-2 focus:ring-brand-500/50 outline-none" onchange="renderScheduler()">
+                                <button onclick="changeSchedulerDate(0)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-medium text-sm transition-colors">Hari Ini</button>
                             </div>
-                            <button onclick="refreshData()" class="px-4 py-2 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-xl font-medium flex items-center gap-2">
+                            <button onclick="refreshData()" class="px-4 py-2 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-colors">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Muat Ulang
                             </button>
                         </div>
                         
-                        <div class="flex-1 overflow-auto border border-slate-200 rounded-xl relative" id="scheduler-grid-container"></div>
+                        <div class="flex-1 overflow-auto border border-slate-200 rounded-xl relative custom-scrollbar" id="scheduler-grid-container"></div>
                     </div>
                 </div>
 
@@ -261,53 +271,55 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div>
                             <h2 class="text-2xl font-bold text-slate-800">Kelola Peminjaman</h2>
-                            <p class="text-slate-500 text-sm">Verifikasi dan Kelola Pengajuan Ruangan.</p>
+                            <p class="text-slate-500 text-sm mt-1">Verifikasi dan kelola pengajuan ruangan.</p>
                         </div>
-                        <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg flex items-center gap-2">
+                        <button onclick="exportExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all w-full md:w-auto">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                             Export Excel
                         </button>
                     </div>
 
                     <div class="bento-card p-4 md:p-6">
-                        <div class="flex flex-col md:flex-row gap-4 mb-6">
+                        <div class="flex flex-col md:flex-row gap-3 mb-6">
                             <div class="flex-1 relative">
                                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
-                                <input type="text" id="filter-search" oninput="debounceFilter()" placeholder="Cari peminjam / ruangan..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                <input type="text" id="filter-search" oninput="debounceFilter()" placeholder="Cari peminjam / ruangan / ID..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500/50 outline-none">
                             </div>
-                            <select id="filter-status" onchange="resetPaginationAndRender()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-[150px]">
+                            <select id="filter-status" onchange="resetPaginationAndRender()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm min-w-[150px] focus:ring-2 focus:ring-brand-500/50 outline-none">
                                 <option value="all">Semua Status</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Disetujui">Disetujui</option>
                                 <option value="Ditolak">Ditolak</option>
+                                <option value="Selesai">Selesai</option>
+                                <option value="Dibatalkan">Dibatalkan</option>
                             </select>
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto rounded-xl border border-slate-100">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50 text-slate-500 text-sm border-y border-slate-200">
-                                        <th class="py-3 px-4 font-medium whitespace-nowrap">ID Pengajuan</th>
-                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Peminjam</th>
-                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Ruangan</th>
-                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Waktu</th>
-                                        <th class="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                                        <th class="py-3 px-4 font-medium text-right whitespace-nowrap">Aksi</th>
+                                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                                        <th class="py-3 px-4 font-semibold whitespace-nowrap">ID Pengajuan</th>
+                                        <th class="py-3 px-4 font-semibold whitespace-nowrap">Peminjam</th>
+                                        <th class="py-3 px-4 font-semibold whitespace-nowrap">Ruangan</th>
+                                        <th class="py-3 px-4 font-semibold whitespace-nowrap">Waktu</th>
+                                        <th class="py-3 px-4 font-semibold whitespace-nowrap">Status</th>
+                                        <th class="py-3 px-4 font-semibold text-right whitespace-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="booking-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                                <tbody id="booking-table-body" class="divide-y divide-slate-100 text-sm bg-white"></tbody>
                             </table>
-                            <div id="booking-empty" class="hidden py-12 text-center text-slate-500">
-                                <p>Tidak ada data ditemukan.</p>
+                            <div id="booking-empty" class="hidden py-12 text-center text-slate-500 flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-slate-200 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                                <p class="text-sm font-medium">Tidak ada data ditemukan.</p>
                             </div>
                         </div>
                         
-                        <!-- Kontrol Paginasi -->
-                        <div class="mt-4 flex justify-between items-center border-t border-slate-100 pt-4">
-                            <span class="text-sm text-slate-500" id="pagination-info">Halaman 1</span>
+                        <div class="mt-5 flex justify-between items-center border-t border-slate-100 pt-4">
+                            <span class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg" id="pagination-info">Halaman 1</span>
                             <div class="flex gap-2">
-                                <button onclick="changePage(-1)" id="btn-prev" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Sebelumnya</button>
-                                <button onclick="changePage(1)" id="btn-next" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Selanjutnya</button>
+                                <button onclick="changePage(-1)" id="btn-prev" class="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-sm text-slate-700 disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed transition-colors font-medium">Sebelumnya</button>
+                                <button onclick="changePage(1)" id="btn-next" class="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-sm text-slate-700 disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed transition-colors font-medium">Selanjutnya</button>
                             </div>
                         </div>
                     </div>
@@ -316,38 +328,38 @@
                 <div id="page-request" class="page-section hidden space-y-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Ajukan Peminjaman</h2>
-                        <p class="text-slate-500 text-sm">Isi formulir untuk peminjaman ruangan secara real-time.</p>
+                        <p class="text-slate-500 text-sm mt-1">Isi formulir untuk meminjam ruangan.</p>
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2 bento-card p-6">
                             <form id="request-form" onsubmit="handleRequestSubmit(event)" class="space-y-5">
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ruangan <span class="text-red-500">*</span></label>
-                                    <select id="req-room" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"></select>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Ruangan <span class="text-red-500">*</span></label>
+                                    <select id="req-room" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm"></select>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Mulai <span class="text-red-500">*</span></label>
-                                        <input type="date" id="req-date-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Tanggal Mulai <span class="text-red-500">*</span></label>
+                                        <input type="date" id="req-date-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Jam Mulai <span class="text-red-500">*</span></label>
-                                        <input type="time" id="req-time-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Jam Mulai <span class="text-red-500">*</span></label>
+                                        <input type="time" id="req-time-start" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Selesai <span class="text-red-500">*</span></label>
-                                        <input type="date" id="req-date-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Tanggal Selesai <span class="text-red-500">*</span></label>
+                                        <input type="date" id="req-date-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Jam Selesai <span class="text-red-500">*</span></label>
-                                        <input type="time" id="req-time-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Jam Selesai <span class="text-red-500">*</span></label>
+                                        <input type="time" id="req-time-end" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran <span class="text-red-500">*</span></label>
-                                        <select id="req-mapel" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Mata Pelajaran <span class="text-red-500">*</span></label>
+                                        <select id="req-mapel" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                             <option value="">-- Pilih Mata Pelajaran --</option>
                                             <option value="Pendidikan Agama Islam dan Budi Pekerti">Pendidikan Agama Islam dan Budi Pekerti</option>
                                             <option value="Pendidikan Kewarganegaraan">Pendidikan Kewarganegaraan</option>
@@ -356,18 +368,18 @@
                                             <option value="Matematika">Matematika</option>
                                             <option value="Ilmu Pengetahuan Alam">Ilmu Pengetahuan Alam</option>
                                             <option value="Ilmu Pengetahuan Sosial">Ilmu Pengetahuan Sosial</option>
-                                            <option value="Pendidikan Jasmani, Olahraga, dan Kesehatan">Pendidikan Jasmani, Olahraga, dan Kesehatan</option>
+                                            <option value="Pendidikan Jasmani, Olahraga, dan Kesehatan">PJOK</option>
                                             <option value="Informatika">Informatika</option>
-                                            <option value="Seni Budaya dan Keterampilan">Seni Budaya dan Keterampilan</option>
+                                            <option value="Seni Budaya dan Keterampilan">Seni Budaya</option>
                                             <option value="Bahasa Daerah">Bahasa Daerah</option>
                                             <option value="Baca Tulis Alquran">Baca Tulis Alquran</option>
                                             <option value="Bimbingan Konseling">Bimbingan Konseling</option>
-                                            <option value="Koding dan Kecerdasan Artifisial">Koding dan Kecerdasan Artifisial</option>
+                                            <option value="Koding dan Kecerdasan Artifisial">Koding & AI</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Kelas <span class="text-red-500">*</span></label>
-                                        <select id="req-kelas" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white">
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Kelas <span class="text-red-500">*</span></label>
+                                        <select id="req-kelas" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm">
                                             <option value="">-- Pilih Kelas --</option>
                                             <option value="7A">7A</option><option value="7B">7B</option><option value="7C">7C</option><option value="7D">7D</option><option value="7E">7E</option><option value="7F">7F</option><option value="7G">7G</option><option value="7H">7H</option>
                                             <option value="8A">8A</option><option value="8B">8B</option><option value="8C">8C</option><option value="8D">8D</option><option value="8E">8E</option><option value="8F">8F</option><option value="8G">8G</option><option value="8H">8H</option>
@@ -376,33 +388,43 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Tujuan Penggunaan <span class="text-red-500">*</span></label>
-                                    <textarea id="req-purpose" required rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white" placeholder="Contoh: Kegiatan ekskul..."></textarea>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Tujuan Penggunaan <span class="text-red-500">*</span></label>
+                                    <textarea id="req-purpose" required rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all text-sm" placeholder="Contoh: Praktikum / Kegiatan Ekskul..."></textarea>
                                 </div>
-                                <div class="pt-2 flex justify-end">
-                                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-colors">
+                                <div class="pt-4 flex justify-end">
+                                    <button type="submit" class="w-full md:w-auto bg-brand-600 hover:bg-brand-700 text-white px-8 py-3.5 rounded-xl font-medium shadow-lg shadow-brand-500/30 transition-colors flex items-center justify-center gap-2">
                                         Kirim Pengajuan
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                     </button>
                                 </div>
                             </form>
                         </div>
-                        <div class="bento-card p-6 bg-brand-50 border-brand-100">
-                            <h3 class="font-bold text-brand-800 mb-2">Informasi</h3>
-                            <ul class="text-sm text-brand-700 space-y-2 list-disc pl-4">
-                                <li>Pastikan ruangan belum dipesan pada jadwal yang Anda pilih. Sistem akan memeriksa tabrakan data (Collision Detection).</li>
-                                <li>Pengajuan membutuhkan persetujuan.</li>
+                        <div class="bento-card p-6 bg-brand-50 border-brand-100 flex flex-col justify-center h-fit">
+                            <div class="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            </div>
+                            <h3 class="font-bold text-brand-900 mb-2">Informasi Penting</h3>
+                            <ul class="text-sm text-brand-700 space-y-3 list-none">
+                                <li class="flex items-start gap-2">
+                                    <svg class="shrink-0 mt-0.5 text-brand-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <span>Pastikan ruangan belum dipesan pada jadwal yang Anda pilih (Cek Visual Scheduler).</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <svg class="shrink-0 mt-0.5 text-brand-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <span>Setiap pengajuan membutuhkan verifikasi dari Tim Approver.</span>
+                                </li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <footer class="mt-8 py-6 text-center text-xs text-slate-400 border-t border-slate-100">
+                <footer class="mt-10 py-6 text-center text-xs text-slate-400 border-t border-slate-100 font-medium">
                     &copy; ariefcaturk ; &reg; UPTD SPF SMP Negeri 1 Bondowoso
                 </footer>
             </div>
         </main>
 
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-20 flex justify-around items-center p-2 pb-safe" id="mobile-nav"></nav>
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)] z-header flex justify-around items-center p-2 pb-safe" id="mobile-nav"></nav>
     </div>
 
     <script>
@@ -411,17 +433,17 @@
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0Ph_0-pNFgQSmFujdgIOEh3OkVmEy7LIohDkrF_MM-sMfLQ1O_WwvTsbaEZ1GTZeU/exec'; 
         // ======================================
 
-        // Variabel Status Awalan (Empty Initial State)
         let currentUser = null;
         let globalRooms = [];
         let globalBookings = [];
         let chartInstance = null;
         
-        // Paginasi Klien
         let currentPage = 1;
         let itemsPerPage = 10;
         let filteredCache = [];
+        let autoRefreshInterval = null;
 
+        // Parsing Tujuan Penggunaan dengan separator "|||"
         function parseBooking(b) {
             let mapel = '-';
             let kelas = '-';
@@ -432,9 +454,6 @@
                     mapel = parts[0];
                     kelas = parts[1];
                     tujuan = parts[2];
-                } else if (parts.length === 2) {
-                    mapel = parts[0];
-                    tujuan = parts[1];
                 }
             }
             return { ...b, mapel, kelas, tujuanParsed: tujuan };
@@ -445,21 +464,17 @@
                 document.getElementById('gas-warning').classList.remove('hidden');
             }
             
-            // Periksa token login dari session (Auth Guard)
             const savedUser = sessionStorage.getItem('ruangku_user');
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
                 initApp();
             }
-            
-            // Set tanggal hari ini di scheduler
             document.getElementById('scheduler-date').value = new Date().toISOString().split('T')[0];
         };
 
-        let isFetching = false;
         async function fetchAPI(action, payload = {}, retryCount = 0) {
             if (GAS_URL === 'ISI_URL_WEBAPP_GOOGLE_DISINI') {
-                showToast('Backend belum diatur.', 'error');
+                showToast('Backend belum diatur (GAS URL INVALID).', 'error');
                 return { status: 'error', message: 'GAS URL INVALID' };
             }
 
@@ -467,21 +482,15 @@
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
-                    redirect: 'follow', // Penting untuk bypass CORS Apps Script Redirect
+                    redirect: 'follow', 
                     body: JSON.stringify({ action, payload })
                 });
-                
                 const result = await response.json();
                 if (result.status === 'error') throw new Error(result.message);
                 return result;
-                
             } catch (err) {
-                if (retryCount < 2) {
-                    return await fetchAPI(action, payload, retryCount + 1); // Silent Background Retry
-                } else {
-                    showToast(err.message || 'Gagal menghubungi server.', 'error');
-                    return { status: 'error', message: err.message };
-                }
+                if (retryCount < 2) return await fetchAPI(action, payload, retryCount + 1); 
+                else { showToast(err.message || 'Gagal menghubungi server.', 'error'); return { status: 'error', message: err.message }; }
             }
         }
 
@@ -497,17 +506,14 @@
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             const bg = type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800';
+            const icon = type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
             
-            toast.className = `px-4 py-3 rounded-xl border shadow-lg transform transition-all translate-x-full opacity-0 flex items-center gap-2 ${bg}`;
-            toast.innerHTML = `<div class="font-medium text-sm flex-1">${msg}</div>`;
+            toast.className = `px-4 py-3 rounded-2xl border shadow-lg transform transition-all translate-x-full opacity-0 flex items-center gap-3 ${bg}`;
+            toast.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0">${icon}</svg><div class="font-medium text-sm flex-1">${msg}</div>`;
             container.appendChild(toast);
             
             setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
-            
-            toastTimer = setTimeout(() => {
-                toast.classList.add('opacity-0', 'scale-95');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            toastTimer = setTimeout(() => { toast.classList.add('opacity-0', 'scale-95'); setTimeout(() => toast.remove(), 300); }, 3500);
         }
 
         function openModal(title, contentHTML, footerHTML) {
@@ -539,15 +545,14 @@
                 sessionStorage.setItem('ruangku_user', JSON.stringify(currentUser));
                 showToast(`Selamat datang, ${currentUser.nama}`, 'success');
                 initApp();
-            } else {
-                showToast(res.message, 'error');
-            }
+            } else { showToast(res.message, 'error'); }
         }
 
         function handleLogout() {
             currentUser = null;
             sessionStorage.removeItem('ruangku_user');
             globalBookings = [];
+            if(autoRefreshInterval) clearInterval(autoRefreshInterval);
             document.getElementById('view-app').classList.add('hidden');
             document.getElementById('view-login').classList.remove('hidden');
             document.getElementById('login-form').reset();
@@ -570,7 +575,31 @@
             document.getElementById('user-initial').textContent = currentUser.nama.charAt(0);
             
             renderNavigation();
-            refreshData(); // Panggil server
+            refreshData(); 
+            
+            // Real-time silent refresh setiap 1 menit (60000ms)
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(silentRefresh, 60000);
+        }
+
+        async function silentRefresh() {
+            if (!currentUser || GAS_URL === 'ISI_URL_WEBAPP_GOOGLE_DISINI') return;
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    redirect: 'follow', 
+                    body: JSON.stringify({ action: 'getData', payload: {} })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    globalBookings = result.data.bookings || [];
+                    // Update UI jika ada perubahan secara diam-diam
+                    if (!document.getElementById('page-scheduler').classList.contains('hidden')) renderScheduler();
+                    if (!document.getElementById('page-dashboard').classList.contains('hidden')) renderDashboard();
+                    if (!document.getElementById('page-manage').classList.contains('hidden')) renderBookingTable();
+                }
+            } catch (e) { /* Abaikan jika error jaringan saat background sync */ }
         }
 
         function renderNavigation() {
@@ -580,8 +609,8 @@
             
             NAV_MENUS.forEach(menu => {
                 if(menu.roles.includes(currentUser.role)) {
-                    deskNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-desk-${menu.id}" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors font-medium text-sm text-left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${menu.icon}</svg>${menu.label}</button>`;
-                    mobNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-mob-${menu.id}" class="nav-item flex flex-col items-center p-2 text-slate-400 hover:text-brand-600 transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1">${menu.icon}</svg><span class="text-[10px] font-medium">${menu.label}</span></button>`;
+                    deskNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-desk-${menu.id}" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-brand-600 transition-all font-medium text-sm text-left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${menu.icon}</svg>${menu.label}</button>`;
+                    mobNav.innerHTML += `<button onclick="navTo('${menu.id}')" id="nav-mob-${menu.id}" class="nav-item flex flex-col items-center p-2 text-slate-400 hover:text-brand-600 transition-all"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1">${menu.icon}</svg><span class="text-[10px] font-medium">${menu.label}</span></button>`;
                 }
             });
         }
@@ -615,7 +644,6 @@
                 
                 const sel = document.getElementById('req-room');
                 sel.innerHTML = '<option value="">-- Pilih Ruangan --</option>' + globalRooms.map(r => `<option value="${r}">${r}</option>`).join('');
-                
                 navTo('dashboard');
             }
         }
@@ -623,17 +651,17 @@
         function renderDashboard() {
             let total = globalBookings.length;
             let pending = globalBookings.filter(x => x.status === 'Pending').length;
-            let approved = globalBookings.filter(x => x.status === 'Disetujui').length;
+            let approved = globalBookings.filter(x => ['Disetujui', 'Selesai'].includes(x.status)).length;
             let myBookings = globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip).length;
 
             let statsHtml = currentUser.role === 'guru' ? 
-                `<div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-brand-600">${myBookings}</div><div class="text-xs text-slate-500 uppercase font-semibold">Total Pengajuan Saya</div></div>
-                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-amber-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && x.status==='Pending').length}</div><div class="text-xs text-slate-500 uppercase font-semibold">Menunggu</div></div>
-                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-emerald-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && x.status==='Disetujui').length}</div><div class="text-xs text-slate-500 uppercase font-semibold">Disetujui</div></div>` : 
-                `<div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-brand-600">${total}</div><div class="text-xs text-slate-500 uppercase font-semibold">Total Pengajuan</div></div>
-                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-amber-500">${pending}</div><div class="text-xs text-slate-500 uppercase font-semibold">Menunggu Review</div></div>
-                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-emerald-500">${approved}</div><div class="text-xs text-slate-500 uppercase font-semibold">Telah Disetujui</div></div>
-                 <div class="bento-card p-4 text-center"><div class="text-3xl font-bold text-red-500">${total - pending - approved}</div><div class="text-xs text-slate-500 uppercase font-semibold">Ditolak</div></div>`;
+                `<div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-brand-600">${myBookings}</div><div class="text-xs text-slate-500 mt-1 font-medium">Pengajuan Saya</div></div>
+                 <div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-amber-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && x.status==='Pending').length}</div><div class="text-xs text-slate-500 mt-1 font-medium">Menunggu</div></div>
+                 <div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-emerald-500">${globalBookings.filter(x => x.NIP_Peminjam === currentUser.nip && ['Disetujui', 'Selesai'].includes(x.status)).length}</div><div class="text-xs text-slate-500 mt-1 font-medium">Disetujui / Selesai</div></div>` : 
+                `<div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-brand-600">${total}</div><div class="text-xs text-slate-500 mt-1 font-medium">Total Pengajuan</div></div>
+                 <div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-amber-500">${pending}</div><div class="text-xs text-slate-500 mt-1 font-medium">Menunggu Review</div></div>
+                 <div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-emerald-500">${approved}</div><div class="text-xs text-slate-500 mt-1 font-medium">Disetujui / Selesai</div></div>
+                 <div class="bento-card p-5 text-center"><div class="text-3xl font-bold text-red-500">${globalBookings.filter(x => ['Ditolak', 'Dibatalkan'].includes(x.status)).length}</div><div class="text-xs text-slate-500 mt-1 font-medium">Gagal / Dibatalkan</div></div>`;
             document.getElementById('dashboard-stats').innerHTML = statsHtml;
 
             const ctx = document.getElementById('recapChart');
@@ -642,20 +670,20 @@
                 type: 'bar',
                 data: {
                     labels: globalRooms,
-                    datasets: [{ label: 'Total Peminjaman (Disetujui)', data: globalRooms.map(r => globalBookings.filter(b => b.Nama_Ruangan === r && b.status === 'Disetujui').length), backgroundColor: '#3b82f6', borderRadius: 4 }]
+                    datasets: [{ label: 'Total Peminjaman Sukses', data: globalRooms.map(r => globalBookings.filter(b => b.Nama_Ruangan === r && ['Disetujui', 'Selesai'].includes(b.status)).length), backgroundColor: '#3b82f6', borderRadius: 6 }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
             const acts = [...globalBookings].reverse().slice(0, 5);
             document.getElementById('recent-activities').innerHTML = acts.length ? acts.map(a => {
                 const pb = parseBooking(a);
                 return `
-                <div class="flex items-start gap-3 pb-3 border-b border-slate-100">
-                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-                    <div><p class="text-sm text-slate-800"><span class="font-semibold">${pb.Nama_Peminjam}</span> meminjam <span class="font-semibold">${pb.Nama_Ruangan}</span></p>
-                    <p class="text-[10px] text-slate-500">${pb.Tanggal_Mulai} &bull; <span class="font-medium">${pb.status}</span></p></div>
-                </div>`}).join('') : '<p class="text-sm text-slate-400">Kosong</p>';
+                <div class="flex items-start gap-3 pb-3 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div class="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 mt-0.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    <div><p class="text-sm text-slate-800"><span class="font-semibold">${pb.Nama_Peminjam}</span> meminjam <span class="font-medium">${pb.Nama_Ruangan}</span></p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">${pb.Tanggal_Mulai} &bull; <span class="font-medium ${pb.status === 'Disetujui' ? 'text-emerald-600' : pb.status === 'Selesai' ? 'text-blue-600' : pb.status === 'Pending' ? 'text-amber-600' : 'text-slate-500'}">${pb.status}</span></p></div>
+                </div>`}).join('') : '<p class="text-sm text-slate-400">Belum ada aktivitas.</p>';
                 
             renderRecapTable();
         }
@@ -678,7 +706,7 @@
             const currentMonth = now.getMonth();
 
             const filtered = globalBookings.filter(b => {
-                if (b.status !== 'Disetujui') return false; 
+                if (b.status !== 'Disetujui' && b.status !== 'Selesai') return false; 
                 const bDate = new Date(b.Tanggal_Mulai);
                 if (filter === 'daily') return b.Tanggal_Mulai === today;
                 if (filter === 'weekly') return getWeekNumber(bDate) === currentWeek && bDate.getFullYear() === currentYear;
@@ -701,9 +729,9 @@
                 return `
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="py-3 px-4 font-medium text-slate-800">${pb.Nama_Peminjam}</td>
-                    <td class="py-3 px-4">${pb.mapel}${pb.kelas !== '-' ? '<br><span class="text-xs text-slate-500">Kelas ' + pb.kelas + '</span>' : ''}</td>
-                    <td class="py-3 px-4">${pb.Nama_Ruangan}</td>
-                    <td class="py-3 px-4 text-slate-600">${pb.Tanggal_Mulai} (${pb.Waktu_Mulai}-${pb.Waktu_Selesai})</td>
+                    <td class="py-3 px-4">${pb.mapel}${pb.kelas !== '-' ? '<br><span class="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded mt-1 inline-block">Kelas ' + pb.kelas + '</span>' : ''}</td>
+                    <td class="py-3 px-4 font-medium">${pb.Nama_Ruangan}</td>
+                    <td class="py-3 px-4 text-slate-600 text-xs">${pb.Tanggal_Mulai}<br><span class="font-medium">${pb.Waktu_Mulai} - ${pb.Waktu_Selesai}</span></td>
                 </tr>
             `}).join('');
         }
@@ -718,34 +746,56 @@
         function renderScheduler() {
             const dateStr = document.getElementById('scheduler-date').value;
             const container = document.getElementById('scheduler-grid-container');
-            const dayBookings = globalBookings.filter(b => (b.Tanggal_Mulai <= dateStr && b.Tanggal_Selesai >= dateStr) && b.status !== 'Ditolak');
+            const dayBookings = globalBookings.filter(b => (b.Tanggal_Mulai <= dateStr && b.Tanggal_Selesai >= dateStr) && !['Ditolak', 'Dibatalkan'].includes(b.status));
             const hours = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
             
-            let html = `<div class="min-w-[800px]"><div class="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10"><div class="w-40 p-3 font-semibold text-sm border-r border-slate-200">Ruangan</div>${hours.map(h => `<div class="flex-1 p-3 text-center text-xs font-semibold text-slate-500 border-r border-slate-200">${h}</div>`).join('')}</div>`;
+            let html = `<div class="min-w-[800px] relative"><div class="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10 shadow-sm"><div class="w-40 p-3 font-semibold text-sm border-r border-slate-200 text-slate-700">Ruangan</div>${hours.map(h => `<div class="flex-1 p-3 text-center text-xs font-semibold text-slate-500 border-r border-slate-200">${h}</div>`).join('')}</div>`;
+
+            // Real-time Waktu Saat Ini (Garis Merah)
+            const d = new Date();
+            const yyyy = d.getFullYear(), mm = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+            const localToday = `${yyyy}-${mm}-${dd}`;
+            let timeIndicatorHtml = '';
+            
+            if (dateStr === localToday) {
+                const h = d.getHours(), m = d.getMinutes();
+                if (h >= 7 && h <= 16) {
+                    const percentage = (((h - 7) * 60 + m) / (10 * 60)) * 100;
+                    timeIndicatorHtml = `<div class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.8)]" style="left: calc(10rem + (100% - 10rem) * ${percentage/100});"><div class="absolute -top-1 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full z-30">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div></div>`;
+                }
+            }
 
             globalRooms.forEach(room => {
-                html += `<div class="flex border-b border-slate-100 group relative"><div class="w-40 p-3 text-sm font-medium border-r border-slate-200 shrink-0">${room}</div><div class="flex-1 flex relative h-14">${hours.map(() => `<div class="flex-1 border-r border-slate-100/50"></div>`).join('')}`;
+                html += `<div class="flex border-b border-slate-100 group relative bg-white"><div class="w-40 p-3 text-sm font-medium border-r border-slate-200 shrink-0 text-slate-700">${room}</div><div class="flex-1 flex relative h-14">${hours.map(() => `<div class="flex-1 border-r border-slate-50"></div>`).join('')}`;
                 
                 dayBookings.filter(b => b.Nama_Ruangan === room).forEach(b => {
                     const sHour = parseInt(b.Waktu_Mulai.split(':')[0]);
+                    const sMin = parseInt(b.Waktu_Mulai.split(':')[1]) || 0;
                     const eHour = parseInt(b.Waktu_Selesai.split(':')[0]);
+                    const eMin = parseInt(b.Waktu_Selesai.split(':')[1]) || 0;
+                    
                     if(sHour >= 7 && sHour <= 16) {
-                        const startIdx = Math.max(0, sHour - 7);
-                        const span = Math.min(hours.length - startIdx, (eHour - sHour) || 1);
-                        const left = (startIdx / hours.length) * 100, width = (span / hours.length) * 100;
-                        const bg = b.status === 'Disetujui' ? 'bg-brand-100 border-brand-300 text-brand-800' : 'bg-amber-100 border-amber-300 text-amber-800';
-                        html += `<div class="absolute top-1 bottom-1 rounded-md border text-[10px] overflow-hidden p-1 shadow-sm opacity-90 hover:opacity-100 cursor-pointer ${bg}" style="left:${left}%; width:calc(${width}% - 2px);" onclick="showBookingDetails('${b.ID_Peminjaman}')"><div class="font-bold truncate">${b.Nama_Peminjam}</div></div>`;
+                        const startMins = (sHour - 7) * 60 + sMin;
+                        let endMins = (eHour - 7) * 60 + eMin;
+                        if(endMins > 600) endMins = 600; // Batas render sampai jam 17:00 (10 jam = 600 menit)
+                        
+                        const totalGridMins = 10 * 60;
+                        const left = (startMins / totalGridMins) * 100;
+                        const width = ((endMins - startMins) / totalGridMins) * 100;
+                        
+                        const bg = ['Disetujui', 'Selesai'].includes(b.status) ? 'bg-brand-100 border-brand-300 text-brand-800 hover:bg-brand-200' : 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200';
+                        html += `<div class="absolute top-1.5 bottom-1.5 rounded-lg border text-[10px] overflow-hidden p-1.5 shadow-sm transition-colors cursor-pointer z-10 ${bg}" style="left:${left}%; width:calc(${width}% - 4px);" onclick="showBookingDetails('${b.ID_Peminjaman}')"><div class="font-bold truncate">${b.Nama_Peminjam}</div><div class="truncate opacity-80">${b.Waktu_Mulai}-${b.Waktu_Selesai}</div></div>`;
                     }
                 });
                 html += `</div></div>`;
             });
-            container.innerHTML = html + `</div>`;
+            container.innerHTML = html + timeIndicatorHtml + `</div>`;
         }
 
         let filterTimeout;
         function debounceFilter() {
             clearTimeout(filterTimeout);
-            document.getElementById('booking-table-body').innerHTML = `<tr><td colspan="6"><div class="h-10 skeleton my-2 rounded"></div></td></tr>`;
+            document.getElementById('booking-table-body').innerHTML = `<tr><td colspan="6"><div class="h-12 skeleton my-2 rounded-xl"></div></td></tr>`;
             filterTimeout = setTimeout(() => { resetPaginationAndRender(); }, 300);
         }
 
@@ -759,13 +809,12 @@
                 const matchSearch = b.Nama_Peminjam.toLowerCase().includes(search) || b.Nama_Ruangan.toLowerCase().includes(search) || b.ID_Peminjaman.toLowerCase().includes(search);
                 const matchStatus = statusF === 'all' || b.status === statusF;
                 return matchSearch && matchStatus;
-            }).reverse(); // Sort descending by ID inherently
+            }).reverse(); 
 
-            // Manual Pagination Logic
             const totalPages = Math.ceil(filteredCache.length / itemsPerPage) || 1;
             document.getElementById('btn-prev').disabled = currentPage === 1;
             document.getElementById('btn-next').disabled = currentPage === totalPages;
-            document.getElementById('pagination-info').textContent = `Hal ${currentPage} dari ${totalPages} (${filteredCache.length} Data)`;
+            document.getElementById('pagination-info').textContent = `Halaman ${currentPage} dari ${totalPages} (${filteredCache.length} Data)`;
 
             const start = (currentPage - 1) * itemsPerPage;
             const paginatedData = filteredCache.slice(start, start + itemsPerPage);
@@ -780,12 +829,12 @@
 
             tbody.innerHTML = paginatedData.map(b => `
                 <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="py-3 px-4 font-medium text-brand-600">${b.ID_Peminjaman}</td>
-                    <td class="py-3 px-4 font-medium text-slate-800">${b.Nama_Peminjam}</td>
-                    <td class="py-3 px-4">${b.Nama_Ruangan}</td>
-                    <td class="py-3 px-4"><div class="text-slate-800">${b.Tanggal_Mulai}</div><div class="text-xs text-slate-500">${b.Waktu_Mulai} - ${b.Waktu_Selesai}</div></td>
-                    <td class="py-3 px-4"><span class="px-2.5 py-1 text-xs rounded-full font-medium ${b.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${b.status}</span></td>
-                    <td class="py-3 px-4 text-right"><button onclick="showBookingDetails('${b.ID_Peminjaman}')" class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg">Detail</button></td>
+                    <td class="py-3.5 px-4 font-semibold text-brand-600 text-xs">${b.ID_Peminjaman}</td>
+                    <td class="py-3.5 px-4 font-medium text-slate-800">${b.Nama_Peminjam}</td>
+                    <td class="py-3.5 px-4 font-medium">${b.Nama_Ruangan}</td>
+                    <td class="py-3.5 px-4"><div class="text-slate-800 text-sm">${b.Tanggal_Mulai}</div><div class="text-xs text-slate-500 font-medium">${b.Waktu_Mulai} - ${b.Waktu_Selesai}</div></td>
+                    <td class="py-3.5 px-4"><span class="px-3 py-1 text-xs rounded-full font-bold ${b.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Selesai' ? 'bg-blue-100 text-blue-700' : b.status === 'Dibatalkan' ? 'bg-slate-100 text-slate-700' : b.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${b.status}</span></td>
+                    <td class="py-3.5 px-4 text-right"><button onclick="showBookingDetails('${b.ID_Peminjaman}')" class="px-3 py-1.5 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors">Detail</button></td>
                 </tr>
             `).join('');
         }
@@ -800,14 +849,23 @@
             const mapel = document.getElementById('req-mapel').value;
             const kelas = document.getElementById('req-kelas').value;
             const tujuanRaw = document.getElementById('req-purpose').value;
+            
+            const reqS = document.getElementById('req-time-start').value;
+            const reqE = document.getElementById('req-time-end').value;
+            
+            if(reqS >= reqE) {
+                showToast('Jam selesai harus lebih besar dari jam mulai.', 'error');
+                return;
+            }
+
             const data = {
                 nip: currentUser.nip,
                 nama: currentUser.nama,
                 ruangan: document.getElementById('req-room').value,
                 tglMulai: document.getElementById('req-date-start').value,
-                wktMulai: document.getElementById('req-time-start').value,
+                wktMulai: reqS,
                 tglSelesai: document.getElementById('req-date-end').value,
-                wktSelesai: document.getElementById('req-time-end').value,
+                wktSelesai: reqE,
                 tujuan: mapel + '|||' + kelas + '|||' + tujuanRaw
             };
 
@@ -818,9 +876,9 @@
             if(res.status === 'success') {
                 showToast('Pengajuan berhasil dikirim!', 'success');
                 document.getElementById('request-form').reset();
-                refreshData(); // Tarik data baru
+                refreshData(); 
             } else {
-                showToast(res.message, 'error'); // Termasuk notifikasi tabrakan jadwal
+                showToast(res.message, 'error'); 
             }
         }
 
@@ -829,29 +887,65 @@
             if(!bRaw) return;
             const b = parseBooking(bRaw);
 
-            let html = `<div class="space-y-4 text-sm">
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">ID</div><div class="col-span-2 font-medium">${b.ID_Peminjaman}</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Peminjam</div><div class="col-span-2 font-medium">${b.Nama_Peminjam}</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Ruangan</div><div class="col-span-2 font-medium">${b.Nama_Ruangan}</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Jadwal</div><div class="col-span-2 font-medium">${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Mata Pelajaran</div><div class="col-span-2 font-medium">${b.mapel}</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Kelas</div><div class="col-span-2 font-medium">${b.kelas}</div></div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-2"><div class="text-slate-500">Tujuan</div><div class="col-span-2 font-medium">${b.tujuanParsed}</div></div>
-                <div class="grid grid-cols-3 gap-2"><div class="text-slate-500">Status</div><div class="col-span-2 font-medium">${b.status}</div></div>
+            let html = `<div class="space-y-4 text-sm bg-white">
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">ID</div><div class="col-span-2 font-bold text-slate-800">${b.ID_Peminjaman}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Peminjam</div><div class="col-span-2 font-bold text-slate-800">${b.Nama_Peminjam}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Ruangan</div><div class="col-span-2 font-bold text-slate-800">${b.Nama_Ruangan}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Jadwal</div><div class="col-span-2 font-bold text-slate-800">${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Mata Pelajaran</div><div class="col-span-2 font-medium text-slate-800">${b.mapel}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Kelas</div><div class="col-span-2 font-bold text-brand-600">${b.kelas}</div></div>
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3"><div class="text-slate-500 font-medium">Tujuan</div><div class="col-span-2 text-slate-700 leading-relaxed">${b.tujuanParsed}</div></div>
+                <div class="grid grid-cols-3 gap-2"><div class="text-slate-500 font-medium">Status</div><div class="col-span-2 font-bold ${b.status === 'Disetujui' ? 'text-emerald-600' : b.status === 'Selesai' ? 'text-blue-600' : b.status === 'Dibatalkan' ? 'text-slate-600' : b.status === 'Pending' ? 'text-amber-600' : 'text-red-600'}">${b.status}</div></div>
             </div>`;
 
-            let foot = `<button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">Tutup</button>`;
+            let btns = [];
+            const isAdminGroup = ['admin', 'kepalalab', 'laboran', 'kurikulum'].includes(currentUser.role);
+            const isOwner = b.NIP_Peminjam === currentUser.nip;
             
-            if(currentUser.role !== 'guru' && b.status === 'Pending') {
-                foot = `<button onclick="updateStatus('${b.ID_Peminjaman}', 'Ditolak')" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium">Tolak</button>
-                        <button onclick="updateStatus('${b.ID_Peminjaman}', 'Disetujui')" class="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-medium">Setujui</button>` + foot;
+            // Validasi Batal & Hapus Sesuai Aturan Baru
+            const canCancel = (isOwner || isAdminGroup) && (b.status === 'Pending' || b.status === 'Disetujui');
+            const canDelete = isAdminGroup;
+            
+            if (canDelete) {
+                btns.push(`<button onclick="confirmDelete('${b.ID_Peminjaman}')" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium transition-colors">Hapus</button>`);
             }
-
-            if(currentUser.role === 'guru' && b.status === 'Disetujui') {
-                foot = `<button onclick="printPDF('${b.ID_Peminjaman}')" class="px-4 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-xl font-medium">Cetak PDF</button>` + foot;
+            
+            if (isAdminGroup && b.status === 'Pending') {
+                btns.push(`<button onclick="updateStatus('${b.ID_Peminjaman}', 'Ditolak')" class="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors">Tolak</button>`);
             }
+            
+            if (canCancel) {
+                btns.push(`<button onclick="updateStatus('${b.ID_Peminjaman}', 'Dibatalkan')" class="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-medium transition-colors">Batalkan</button>`);
+            }
+            
+            if (isAdminGroup && b.status === 'Pending') {
+                btns.push(`<button onclick="updateStatus('${b.ID_Peminjaman}', 'Disetujui')" class="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-medium shadow-lg shadow-emerald-500/30 transition-colors">Setujui</button>`);
+            }
+            
+            if (currentUser.role === 'guru' && b.status === 'Disetujui') {
+                 btns.push(`<button onclick="printPDF('${b.ID_Peminjaman}')" class="px-4 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-xl font-medium shadow-lg shadow-brand-500/30 transition-colors flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Cetak Surat</button>`);
+            }
+            
+            btns.push(`<button onclick="closeModal()" class="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-slate-700 transition-colors w-full md:w-auto">Tutup</button>`);
 
-            openModal(`Detail Pengajuan`, html, foot);
+            openModal(`Detail Pengajuan`, html, btns.join(''));
+        }
+
+        function confirmDelete(id) {
+            closeModal();
+            setTimeout(() => {
+                const html = `<div class="text-center py-4"><div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4"><svg class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><h3 class="text-lg font-bold text-slate-900 mb-2">Hapus Data Permanen?</h3><p class="text-sm text-slate-500">Apakah Anda yakin ingin menghapus data peminjaman <b>${id}</b>? Tindakan ini tidak dapat dibatalkan.</p></div>`;
+                const footer = `<button onclick="closeModal()" class="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-slate-700 transition-colors w-full sm:w-auto">Batal</button><button onclick="executeDelete('${id}')" class="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-medium shadow-lg shadow-red-500/30 transition-colors w-full sm:w-auto">Ya, Hapus</button>`;
+                openModal('Konfirmasi Penghapusan', html, footer);
+            }, 350); 
+        }
+
+        async function executeDelete(id) {
+            closeModal(); showLoader(true);
+            const res = await fetchAPI('deleteBooking', { id: id });
+            showLoader(false);
+            if(res.status === 'success') { showToast('Data berhasil dihapus.', 'success'); refreshData(); } 
+            else { showToast(res.message, 'error'); }
         }
 
         async function updateStatus(id, newStatus) {
@@ -864,12 +958,20 @@
 
         function exportExcel() {
             try {
-                const ws = XLSX.utils.json_to_sheet(filteredCache);
+                const exportData = filteredCache.map(b => {
+                    const pb = parseBooking(b);
+                    return {
+                        'ID Peminjaman': pb.ID_Peminjaman, 'Nama Peminjam': pb.Nama_Peminjam, 'Ruangan': pb.Nama_Ruangan,
+                        'Tanggal': pb.Tanggal_Mulai, 'Mulai': pb.Waktu_Mulai, 'Selesai': pb.Waktu_Selesai,
+                        'Mata Pelajaran': pb.mapel, 'Kelas': pb.kelas, 'Tujuan': pb.tujuanParsed, 'Status': pb.status
+                    };
+                });
+                const ws = XLSX.utils.json_to_sheet(exportData);
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+                XLSX.utils.book_append_sheet(wb, ws, "Rekap_Ruangku");
                 XLSX.writeFile(wb, `Rekap_Ruangku_${new Date().toISOString().split('T')[0]}.xlsx`);
-                showToast('Excel diunduh.', 'success');
-            } catch(e) { showToast('Gagal ekspor.', 'error'); }
+                showToast('Berhasil mengunduh Excel.', 'success');
+            } catch(e) { showToast('Gagal ekspor Excel.', 'error'); }
         }
 
         async function printPDF(id) {
@@ -887,42 +989,40 @@
                     kopImg.crossOrigin = "Anonymous";
                     kopImg.onload = () => resolve(kopImg);
                     kopImg.onerror = () => resolve(null);
-                    setTimeout(() => resolve(null), 3000);
+                    setTimeout(() => resolve(null), 3000); 
                     kopImg.src = 'https://lh3.googleusercontent.com/d/1DijxakM6Be7mexW3WZajTYbMxfkNnRo2'; 
                 });
                 
                 const img = await loadImg;
-                if (img) {
-                    doc.addImage(img, 'JPEG', 15, 10, 180, 30);
-                } else {
-                    doc.setFontSize(14);
-                    doc.text("UPTD SPF SMPN 1 BONDOWOSO", 105, 20, {align: 'center'});
-                }
+                if (img) { doc.addImage(img, 'JPEG', 15, 10, 180, 30); } 
+                else { doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("UPTD SPF SMPN 1 BONDOWOSO", 105, 20, {align: 'center'}); }
 
-                doc.setFontSize(14); doc.text("SURAT IZIN PEMINJAMAN", 105, 50, {align: 'center'});
+                doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("SURAT IZIN PEMINJAMAN RUANGAN", 105, 55, {align: 'center'});
                 
                 doc.autoTable({
-                    startY: 65, 
-                    theme: 'plain',
+                    startY: 65, theme: 'plain',
+                    styles: { fontSize: 11, cellPadding: 3 },
+                    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 10 } },
                     body: [ 
                         ['ID Peminjaman', ':', b.ID_Peminjaman], 
                         ['Nama Peminjam', ':', b.Nama_Peminjam], 
                         ['Nama Ruangan', ':', b.Nama_Ruangan], 
-                        ['Jadwal', ':', `${b.Tanggal_Mulai} (${b.Waktu_Mulai}-${b.Waktu_Selesai})`], 
+                        ['Jadwal', ':', `${b.Tanggal_Mulai} (${b.Waktu_Mulai} - ${b.Waktu_Selesai})`], 
                         ['Mata Pelajaran', ':', b.mapel],
                         ['Kelas', ':', b.kelas],
                         ['Tujuan / Keterangan', ':', b.tujuanParsed],
-                        ['Status', ':', b.status] 
+                        ['Status Sistem', ':', b.status] 
                     ]
                 });
-                doc.text("Disetujui dan sah digunakan.", 15, doc.lastAutoTable.finalY + 15);
-                doc.save(`Izin_${b.ID_Peminjaman}.pdf`);
-                showToast('PDF Diunduh.', 'success');
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(11);
+                doc.text("Demikian surat izin ini diterbitkan melalui sistem RUANGKU dan sah digunakan.", 15, doc.lastAutoTable.finalY + 20);
+                doc.save(`Izin_Ruangku_${b.ID_Peminjaman}.pdf`);
+                showToast('Surat Izin (PDF) berhasil diunduh.', 'success');
             } catch (err) { 
                 console.error(err);
-                showToast('Gagal buat PDF.', 'error'); 
-            }
-            finally { showLoader(false); }
+                showToast('Gagal memproses PDF.', 'error'); 
+            } finally { showLoader(false); }
         }
     </script>
 </body>
